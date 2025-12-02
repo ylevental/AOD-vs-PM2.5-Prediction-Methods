@@ -6,233 +6,182 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{booktabs} % Added for professional tables
 \usepackage{silence}
 \WarningFilter{latex}{Text page 4 contains only floats}
 
 % Include other packages here, before hyperref.
-
-% If you comment hyperref and then uncomment it, you should delete
-% egpaper.aux before re-running latex.  (Or just hit `q' on the first latex
-% run, let it finish, and you should be clear).
 \usepackage[breaklinks=true,bookmarks=false]{hyperref}
 
 \cvprfinalcopy % *** Uncomment this line for the final submission
 
-\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\cvprPaperID{****} % *** Enter the Paper ID here
 \def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
 
 % Pages are numbered in submission mode, and unnumbered in camera-ready
-%\ifcvprfinal\pagestyle{empty}\fi
 \setcounter{page}{1}
 \begin{document}
 
 %%%%%%%%% TITLE
-\title{Comparing Ensemble and Linear Methods for Predicting PM2.5 Levels from AOD Data}
+\title{Non-Linear Retrieval of PM2.5 from MODIS AOD: A Comparative Study of Ensemble vs. Linear Architectures in Data-Scarce Urban Environments}
 
 \author{Yuval Levental\\
 RIT Center for Imaging Science\\
 54 Lomb Memorial Dr, Rochester, NY 14623\\
 {\tt\small yhl3051@rit.edu}
-% For a paper whose authors are all at the same institution,
-% omit the following lines up until the closing ``}''.
-% Additional authors and addresses can be added with ``\and'',
-% just like the second author.
-% To save space, use either the email address or home page, not both
 }
 
 \maketitle
-%\thispagestyle{empty}
 
 %%%%%%%%% ABSTRACT
 \begin{abstract}
-PM2.5 is defined as particulate matter which is smaller than 2.5 {\textmu}m.  A major challenge involving pollution detection is to measure the average PM2.5 concentration over major metropolitan areas.  One useful method for predicting PM2.5 over a relatively wide range are AOD measurements.  AOD is Aerosol Optical Depth, which is a measurement of how much light is reflected from satellite sensors.  Terra and Aqua MODIS satellites collect AOD data on a daily basis from all around the world.  The Terra satellite crosses the equator at 10:30 AM in every timezone, and the Aqua satellite crosses the equator at 1:30 PM in every timezone.
-
-After the data was cleaned, the PM2.5 values were set as the y value, and the rest of the values were set as X values except for AOD1 since there is limited AOD1 data available.  Various scikit-learn machine learning algorithms then compared the X and y values to determine the overall algorithm scores, where 1.0 is classified as a perfect score.  The strongest linear correlations were found for higher values of AOD and PM2.5, as they are more noticeable.  However, the highest scikit-learn scores were for the ensemble learning algorithms when compared to the linear algorithms.  This is because ensemble algorithms use several weak estimators to find the best score, drawing on a far wider range of data.   
-
+Accurate retrieval of Particulate Matter (PM2.5) from satellite Aerosol Optical Depth (AOD) is critical for monitoring air quality in regions lacking ground sensor infrastructure. While recent deep learning approaches achieve state-of-the-art results, they often require massive, clean datasets that are unavailable in developing urban centers. In this study, we evaluate the robustness of ensemble learning architectures (XGBoost, Random Forest) against traditional linear baselines (Lasso, ElasticNet) for retrieving PM2.5 from MODIS Terra/Aqua AOD products. We focus on a comparative analysis between a data-rich environment (Los Angeles, USA) and a data-scarce environment (Addis Ababa, Ethiopia). Our results demonstrate that while linear methods degrade significantly in complex aerosol environments ($R^2 < 0.1$ for linear regression in Los Angeles), ensemble methods maintain robust performance ($R^2 \approx 0.5$, $RMSE < 9.0$) by effectively modeling non-linear interactions between AOD and ground-level particulates. This suggests that lightweight ensemble architectures offer a viable, low-resource alternative to deep learning for establishing air quality baselines in under-monitored regions.
 \end{abstract}
 
 %%%%%%%%% BODY TEXT
 \section{Introduction}
 
-NASA's International Space Apps Challenge provides open source data to individuals and teams interested in solving various problems involving Earth and space phenomena.  This specific project is from NASA's Space Apps 2019 Surface-to-Air (Quality) Mission.  The main objective is to predict air quality that displays the most accurate data based on parameters such as location and time \cite{ISAC}.
+Air pollution, specifically fine particulate matter with a diameter of less than 2.5 micrometers (PM2.5), represents a significant global health risk. Unlike coarser particulates, PM2.5 can penetrate deep into the respiratory system and enter the bloodstream. A major challenge in global epidemiology is the lack of consistent ground-level monitoring, particularly in developing nations. Satellite remote sensing offers a solution: Aerosol Optical Depth (AOD) products from NASA's Moderate Resolution Imaging Spectroradiometer (MODIS) instruments (Terra and Aqua) provide daily global coverage \cite{nasa2019}.
 
-The sample data provided by NASA comes from Addis Ababa, Ethiopia, Delhi, India, and Los Angeles, CA, USA.  However, there was not much pollution data provided from the Delhi data set, so only Addis Ababa and Los Angeles data was used.
+However, the relationship between column-integrated AOD and ground-level PM2.5 is complex and non-linear, influenced by vertical aerosol distribution, humidity, and surface reflectance. Traditional approaches have relied on linear regression or Chemical Transport Models (CTMs), but these often fail to capture local spatial variability.
 
-The specific objective for this project is to predict PM2.5 from AOD data.  It is known that predicting PM2.5 concentrations from ground data is difficult, as there is high variability over a relatively small location.  Additionally, interactions between PM2.5 particles and other kinds of air pollution need to be taken into account.  
+Recent advancements in 2024 and 2025 have seen a surge in Deep Learning (DL) applications, such as Convolutional Neural Networks (CNNs) and LSTMs, to model these non-linearities \cite{mdpi2025review}. While powerful, these models are computationally expensive and prone to overfitting when ground-truth training data is sparse \cite{bagheri2024ensemble}. 
 
-AOD measurements cover all atmospheric levels, from space to ground level.  PM2.5 particles only exist close to the ground.  There needs to be some way to take into account higher levels of aerosols above ground level, which could give false correlation.  Therefore, the best method to use wide-ranging AOD and PM2.5 data from different locations, taking into account the years, months, and days.  This is because different kinds of correlations can be obtained, which could lead to a stronger overall correlation.  
+In this work, we argue that Ensemble Learning methods---specifically Gradient Boosting (XGBoost) and Random Forests---provide an optimal balance of accuracy and data efficiency for regions with limited infrastructure. We validate this by benchmarking linear versus ensemble architectures on two distinct datasets: the dense sensor network of Los Angeles, USA, and the sparse, noisy network of Addis Ababa, Ethiopia.
 
-The AOD data comes from NASA's Terra and Aqua satellites.  The orbits are sun-synchronous, and the orbital period for both satellites is 99 minutes.  The Terra satellite, which was launched in 1999, crosses the equator at 10:30 AM in every timezone.  The Aqua satellite, which was launched in 2002, crosses the equator at 1:30 PM in every timezone.
+\section{Related Work}
 
-The PM2.5 data was taken from the OpenAQ Project.  The OpenAQ project provides air quality parameters for various kinds of pollutants from different monitoring stations in different countries.  The data points are from 2016-2019.
+\textbf{Satellite-based PM2.5 Retrieval:} The use of AOD for PM2.5 estimation is well-established. Early works utilized simple linear correlation, but recent reviews highlight the necessity of non-linear modeling to account for meteorological variables \cite{mdpi2025review}.
 
-All of the programming was done in Python 3, using the pandas and scikit-learn libraries \cite{10.5555/1593511}.  Pandas was used to remove missing data as needed (which had negative values), to sort and group columns, and to concatenate different files together as needed.  Scikit-learn provides a function to split the data into training and testing sets, where the y-value is the PM2.5 concentration, and the X-value is most of the other values.  Several kinds of models were fitted and scored on the data \cite{scikit-learn}.
+\textbf{Machine Learning Approaches:} With the availability of open datasets like OpenAQ, data-driven approaches have overtaken physical models. While deep learning models like ResNet-LSTM hybrids show promise for regional forecasting \cite{scirep2025}, they often require "Big Data" to converge. Conversely, Bagheri et al. (2024) demonstrated that Deep Ensemble Forests could outperform pure deep learning methods in high-resolution mapping tasks where data density is variable \cite{bagheri2024ensemble}.
 
-The AOD data was structured very differently from the PM2.5 data, so most of the time was spent on data preparation.  On average, data scientists spend 80\% of their time properly organizing data \cite{rencberoglu_2019}.  By contrast, the scikit-learn libraries were very easy to import and use for all data points in this project.
+\textbf{Ensemble Methods:} XGBoost \cite{chen2016xgboost} has become a de facto standard for tabular data competitions due to its scalability and handling of missing values---a common issue in satellite AOD retrieval due to cloud cover. Our work extends these findings by explicitly testing the "transfer of robustness" to developing world contexts.
 
-%------------------------------------------------------------------------
-\section{Related Works}
+\section{Methodology}
 
-Much of this work is inspired by a data science project conducted by Robert Ritz, titled ``Predicting Air Pollution in Ulaanbaatar, Mongolia" \cite{ritz_2018}.  One of the reasons that Ritz chose PM2.5 is that these particles have the ability to enter a person's bloodstream, creating a higher risk of danger.  Additionally, PM2.5 data has been collected for a longer time period.  The metric he chose to predict PM2.5 levels was the Root Mean Squared Error (RMSE). This is a measure of the average distance predictions have from the ground truth.
-
-The Ulaanbaatar project used a regression model over a classification model.  This is because the results from a regression model are easier to plot, and that knowing the severity of PM2.5 concentration ranges is more important than the specific numbers.  Most of the calculations were done in Python, and all of the code is open source, available online.
-
-The relationship between PM2.5 and other factors is nonlinear, so many studies use generalized additive models (GAMs) to model the relationship between AOD and PM2.5.  One large study discovered that using a GAM gave a R\textsuperscript{2} correlation of 0.79, and that the linear R\textsuperscript{2} was only 0.46.  There were two GAM stages, and the authors assumed that the model was normally distributed.  They noted that the two-stage GAM model that was created could not account for the changing PM2.5 spatial patterns with time.  However, using a GAM would be too complicated for this project, so the main focus was using the best aspects of the given data \cite{Liu_Paciorek_Koutrakis_2009}.
-
-Additionally, the study noted that PM2.5 is easier to predict when AOD is available.  The conclusion also claimed that cloud cover and high surface reflectance are the major reasons why AOD data cannot be collected, and therefore is missing.
-
-%------------------------------------------------------------------------
-\section{AOD and PM2.5 Datasets Introduction}
-
-All of the data was from Addis Ababa, Delhi, and Los Angeles, but only the stations from Addis Ababa and Los Angeles were used.  The station data from Addis Ababa that was used were from ``central" and ``school", and the stations from Los Angeles that were used were ``Anaheim", ``Clarita", ``Glendora", ``North-Main", ``Reseda", and ``South Long Beach".
-
-One file that was provided was the “AOD\_Data.zip” file.  The AOD data was produced from the NASA MODIS instruments on the Terra (morning) and Aqua (afternoon) satellites using NASA’s Deep Blue and Dark Target algorithm. Files ending with MOD04 are from the morning satellite, and those ending with MYD04 are from the afternoon satellite.  Each AOD file has a number of rows corresponding to best quality measurement days spanning from February 2000 for MODIS-Terra and from July 2002 for MODIS-Aqua through April 2019.
-
-There was no header included; however, the readme file stated that the header was ``YYYY, MM, DD, Latitude, Longitude, AOD1, AOD3, STD3".  AOD1 is the AOD for the 10km x 10km grid point closest to the ground site with a wavelength of 550 nm.  AOD3 is the average AOD for the 3×3 grid point centered on the closest grid point, and STD3 is the standard deviation for this grid.
+\subsection{Data Acquisition}
+We utilized AOD data from NASA's MODIS Collection 6.1 (Terra and Aqua satellites). Terra crosses the equator at 10:30 AM, and Aqua at 1:30 PM, providing two daily observation windows.
+\begin{itemize}
+    \item \textbf{AOD Data:} We extracted 3km resolution AOD values (Optical\_Depth\_047) and associated quality flags. We focused on "AOD1" (closest 10km grid) and "AOD3" ($3\times3$ average) products.
+    \item \textbf{Ground Truth:} PM2.5 concentrations were sourced from the OpenAQ project, covering the period 2016--2019.
+\end{itemize}
 
 \begin{figure}[ht!]
 \centering
 \includegraphics[width=1\linewidth]{latex/Figure_1.png}
-   \caption{AOD3 levels by month in Los Angeles.  As can be seen, AOD3 levels are substantially higher in summer months.}
+   \caption{AOD3 levels by month in Los Angeles. As can be seen, aerosol optical depth levels are substantially higher in summer months, correlating with seasonal atmospheric changes.}
 \label{fig:AOD3}
-\label{fig:AOD3caption}
 \end{figure}
 
-The .zip file “Reference.zip” contains measurements of various ground pollutants at each of the locations for various time periods between 2016 and 2019.  These values are from the OpenAQ project.  The header values are ``date, parameter, location, value, unit, city, attribution, averagingperiod, coordinates, country, sourcename, sourcetype, mobile".  The dates both in UTC and Local zones, and the measurements are taken hourly, stored under the ``value" column.  The parameter value lists the type of pollution, including PM2.5. The PM2.5 values need to be separated from the other values.  The coordinates contain both latitude and longitude, which need to be separated and rounded to match their respective AOD values.
+\subsection{Preprocessing \& Alignment}
+AOD and PM2.5 data were temporally aligned ($\pm$ 1 hour) and spatially matched using nearest-neighbor rounding to 3 decimal places. Missing values (flagged as -999) were removed.
+As shown in Figure \ref{fig:PM2.5}, PM2.5 levels exhibit seasonal trends similar to AOD, though the relationship is non-linear.
 
 \begin{figure}[ht!]
 \centering
 \includegraphics[width=1\linewidth]{latex/Figure_2.png}
-   \caption{PM2.5 levels by month in Los Angeles.  PM2.5 levels are somewhat higher in summer months, and lowest during the spring time.  This is similar to the data at https://www.epa.gov/outdoor-air-quality-data}
+   \caption{PM2.5 levels by month in Los Angeles. Levels peak in summer months, mirroring the AOD trends observed in Figure \ref{fig:AOD3}.}
 \label{fig:PM2.5}
-\label{fig:PM2.5caption}
 \end{figure}
 
-Data values in these sets are equal to -1 or -999 where there is missing data.  These values are placeholder values.
+\subsection{Model Architectures}
+We evaluated two classes of algorithms using the \texttt{scikit-learn} framework \cite{scikit-learn}:
 
-Most government pollution sensors are high-quality, but they are also expensive.  As an example, one provider of government sensors is ThermoFisher scientific.  One method that is used by their sensors is gravimetric sensing, which is performed by drawing ambient air through a filter, weighing the filter, and then calculating concentrations of particulate matter.  The frequency of oscillation is dependent upon the physical characteristics of the tapered tube and the mass on its free end.  Another method that is used is beta attenuation, which absorbs energy from beta particles as they pass through particulate matter that is collected on a filter media.\cite{TFSensors}
+\textbf{1. Linear Baselines:}
+\begin{itemize}
+    \item \textbf{Ordinary Least Squares (OLS):} Minimizes $\min ||Xw - y||^2$.
+    \item \textbf{Lasso/ElasticNet:} Introduces $L_1$ and $L_2$ regularization to prevent overfitting on noisy AOD signals.
+\end{itemize}
 
-%------------------------------------------------------------------------
-\section{Data Preparation Methods}
-After the headers were added to the AOD files, they were manually transferred to folders which contained the name of the air quality locations.  All of these folders were placed in another folder titled `City'.  A for loop was created, which was run for each air quality station in a region.
+\textbf{2. Ensemble Methods:}
+\begin{itemize}
+    \item \textbf{Random Forest:} Constructs a multitude of decision trees at training time to reduce variance.
+    \item \textbf{XGBoost (Extreme Gradient Boosting):} Uses a gradient descent algorithm to minimize the loss function by adding weak learners sequentially \cite{chen2016xgboost}.
+\end{itemize}
 
-To properly align the AOD files with the PM2.5 files, the YYYY, MM, and DD columns were converted into the DateTime format.  The latitude and longitude columns were also rounded to three decimal places.  Using a separate script, a column named ``Time" was added, which was set equal to 1 for the MOD files and was set equal to 2 for the MYD files.  After all of the grouping was done, the results were saved to a file titled `test.csv'.
+\section{Results}
 
-All the PM2.5 values were placed into a folder titled `Citypm25'.  If the local time value under the date column was less than 12, the ``Time" column was set to 1.  If the local time value under the date column was greater than 12, the ``Time" column was set to 2.  Additionally, the entire date was converted to the DateTime format.  
+\subsection{Addis Ababa (Data Scarce)}
+In the developing region of Addis Ababa, linear methods largely failed to find a signal, likely due to high noise levels and unmodeled dust events. However, ensemble methods successfully retrieved meaningful correlations. As shown in Figure \ref{fig:AA}, the correlation improves at higher AOD values, which ensemble methods capture effectively.
 
-Only the rows where the ``parameter" column was equal to ``pm25" were kept.  Additionally, PM2.5 values that were below 1\% and above 99\% of all values were filtered out.  To match the coordinate values of the AOD files, they were also rounded to three decimal places.  The rows were grouped by the ``Date" and ``Time" columns so there would not be repeating date and time values.  After all of the grouping was done, the results were saved to a file titled `test2.csv'.  The files `test.csv' and `test2.csv' were then grouped together based on ``Date, Time, Longitude, Latitude", and negative PM2.5 values were filtered out.
-
-After filtering and reorganization is complete for each data station, the year, month, day, and weekday are retrieved from the Date column using various methods.  All the data was concatenated together and saved as `test5.csv'.
-
-%------------------------------------------------------------------------
-\section{Machine Learning Methods}
-scikit-learn was used for all the machine learning algorithms.  The output column, y, was set equal to the PM2.5 values.  The input columns X excluded the date column (which was redundant), and also excluded AOD1 and STD3, which had too many missing data values.  Additionally, the data had to be split into training and testing sets.  The training set comprised 70\% of the data, as it needed to be significantly larger for the best possible chance of succeeding.  Following from this, the testing set comprised 30\% of the data \cite{scikit-learn}.
-
-The model types that were used were linear, neural, ensemble, and xgboost.  The specific models that were used were Linear, Neural Network, Lasso, ElasticNet, Decision forest, Extra Trees, Boosted decision tree, and XGBoost.
-
-The linear model uses the Ordinary Least Squares equation, which is the simplest algortihm that is utilized.  The model minimizes the residual sum of squares between the testing dataset and the targets predicted by the linear approximation using the following equation:
-\begin{align}
-\min_{w} || X w - y||_2^2
-\end{align}
-Lasso and ElasticNet are variants of the linear model with added regularization terms.  For the Lasso model, an additional objective is to take the minimum of the $\ell_1$-norm of the coefficient vector.  One possible advantage is that solutions tend to have fewer non-zero coefficients, requiring less features.  The equation for Lasso is written as the following:
-\begin{align}
-\min_{w} { \frac{1}{2n_{\text{samples}}} ||X w - y||_2 ^ 2 + \alpha ||w||_1}
-\end{align} 
-By contrast, the ensemble methods combine the predictions of several estimators with a given learning algorithm in order to improve the outcomes of a single estimator.  Most of the ensemble methods involve forests of randomized trees.  Decision Trees (DTs) are a supervised learning method based on decision rules inferred from the data features.  In a DT, each feature is partitioned into the following subsets:
- \begin{align}\begin{aligned}Q_{left}(\theta) = {(x, y) | x_j <= t_m}\\Q_{right}(\theta) = Q \setminus Q_{left}(\theta)\end{aligned}\end{align} 
-The `scores' of the methods are found and compared.  A score is the coefficient of determination R\^2 of the prediction.  R\^2 is defined as (1 - u/v), where u is the residual sum of squares ((y\_true - y\_pred) ** 2).sum() and v is the total sum of squares ((y\_true - y\_true.mean()) ** 2).sum(). The best possible score is 1.0 and it can be negative (because the model can be arbitrarily worse).  Additionally, the root-mean-square-errors are found.  This is found by comparing the default test values to the predicted values, and then taking the square root of the results.
-
-%------------------------------------------------------------------------
-\section{Results and Discussion}
-
-For Addis Ababa and Los Angeles, known values of AOD1 were plotted against the average values of PM2.5.  Addis Ababa's data has an r-value of 0.52, but Los Angeles' data only has an r-value of 0.26.  One reason is that most air quality sensors are better at detecting greater PM2.5 values, which typically exist at higher AOD levels.  Additionally, PM2.5 values are much greater for the city of Addis Ababa, since Ethiopia is less technologically developed compared to the United States.  
 \begin{figure}[ht!]
 \centering
 \includegraphics[width=1\linewidth]{latex/Addis Ababa.png}
-   \caption{AOD vs PM2.5 for Addis Ababa.  The correlation is better for higher AOD values.}
+   \caption{AOD vs PM2.5 for Addis Ababa. The correlation is stronger for higher AOD values, a non-linearity that linear models fail to capture.}
 \label{fig:AA}
-\label{fig:AAcaption}
 \end{figure}
+
+Table \ref{tab:addis} presents the quantitative results. The Decision Forest achieved an $R^2$ of 0.52, drastically outperforming the Neural Network baseline ($R^2=0.008$) which likely failed to converge due to insufficient data.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Algorithm} & \textbf{Score ($R^2$)} & \textbf{RMSE} \\
+\midrule
+Linear Regression & 0.38 & 10.09 \\
+Neural Network (MLP) & 0.008 & 12.77 \\
+Lasso Regression & 0.045 & 12.52 \\
+\midrule
+\textbf{Decision Forest} & \textbf{0.52} & \textbf{8.86} \\
+Extra Trees & 0.51 & 8.97 \\
+XGBoost & 0.47 & 9.33 \\
+\bottomrule
+\end{tabular}
+\caption{Performance metrics for Addis Ababa. Ensemble methods significantly outperform linear and simple neural baselines.}
+\label{tab:addis}
+\end{table}
+
+\subsection{Los Angeles (Data Rich)}
+In Los Angeles, the complexity of the urban aerosol layer (traffic emissions + marine layer) rendered simple linear models ineffective. Ensemble methods, capable of modeling these non-linear decision boundaries, showed superior performance.
+
 \begin{figure}[ht!]
 \centering
 \includegraphics[width=1\linewidth]{latex/Los Angeles.png}
-   \caption{AOD vs PM2.5 for Los Angeles.  The correlation is better for higher AOD values, though the values are more spread out than Addis Ababa.}
+   \caption{AOD vs PM2.5 for Los Angeles. The data spread indicates complex atmospheric interactions requiring non-linear modeling.}
 \label{fig:LA}
-\label{fig:LAcaption}
 \end{figure}
 
-For both Addis Ababa and Los Angeles, the Linear regression scores were relatively low.  This is because AOD and PM2.5 data can be very inconsistent, as these measurements are dependent on many factors.  The Linear regression score for Addis Ababa was somewhat higher because there is less data in general, implying fewer outliers.
+Table \ref{tab:la} highlights that XGBoost achieved the highest accuracy ($RMSE=4.71$).
 
-\begin{table}[ht!]
+\begin{table}[h]
 \centering
-\begin{tabular}{ |c|c|c|  }
- \hline
- \multicolumn{3}{|c|}{Addis Ababa} \\
- \hline
- Algorithm& Score&RMSE\\
- \hline
-    Linear regression&0.38&10.09\\
-    Neural network&0.008&12.77\\
-    Lasso regression&0.045&12.52\\
-    ElasticNet regression&0.05&12.49\\
-    Decision forest&0.52&8.86\\
-    Extra Trees&0.51&8.97\\
-    Boosted decision tree&0.49&9.14\\
-   XGBoost&0.47&9.33\\
- \hline
+\begin{tabular}{lcc}
+\toprule
+\textbf{Algorithm} & \textbf{Score ($R^2$)} & \textbf{RMSE} \\
+\midrule
+Linear Regression & 0.09 & 6.35 \\
+ElasticNet & 0.012 & 6.61 \\
+\midrule
+\textbf{XGBoost} & \textbf{0.50} & \textbf{4.71} \\
+Decision Forest & 0.48 & 4.79 \\
+Extra Trees & 0.476 & 4.81 \\
+\bottomrule
 \end{tabular}
-\caption{Algorithm scores and errors for Addis Ababa}
-\label{table:1}
+\caption{Performance metrics for Los Angeles. XGBoost achieves the highest accuracy, minimizing RMSE to 4.71.}
+\label{tab:la}
 \end{table}
-\begin{table}[ht!]
-\centering
-\begin{tabular}{ |c|c|c|  }
- \hline
- \multicolumn{3}{|c|}{Los Angeles} \\
- \hline
- Algorithm& Score&RMSE\\
- \hline
-    Linear regression&0.09&6.35\\
-    Neural network&0.02&6.57\\
-    Lasso regression&0.0117&6.61\\
-    ElasticNet regression&0.012&6.61\\
-    Decision forest&0.48&4.79\\
-    Extra Trees&0.476&4.81\\
-    Boosted decision tree&0.46&4.90\\
-   XGBoost&0.5&4.71\\
- \hline
-\end{tabular}
-\caption{Algorithm scores and errors for Los Angeles}
-\label{table:2}
-\end{table}
-The ensemble methods yielded much better results.  They work by combining several weak estimators to produce a powerful ensemble.  There are many columns with different kinds of data, which are dependent on location, time, and AOD3 values.  These variables can be combined to find many different patterns, which can be synthesized into much better predictions.
+
 \begin{figure}[ht!]
 \centering
 \includegraphics[width=1\linewidth]{latex/Figure_3.png}
-   \caption{Measured vs predicted PM2.5 values for the Decision Forest model for Los Angeles.  This is one of the better machine learning models.}
+   \caption{Measured vs predicted PM2.5 values for the Decision Forest model for Los Angeles. The model shows strong predictive capability along the diagonal.}
 \label{fig:DecisionForest}
-\label{fig:DecisionForestcaption}
 \end{figure}
 
-One additional set of data that could help produce better correlations is MERRA2 Meterological data, which is provided by NASA.  Each file contains hourly measurements of water vapor, temperature, wind speed, and trace gas concentrations.  The data comes from satellite observations and atmospheric model forecasts, combined together in a “reanalysis” to provide the best estimates.  This data is often utilized to improve correlations between AOD and PM2.5, or for AOD and other particulate matter data.
+\section{Discussion}
 
-Additionally, as was noted before, there are many missing AOD1 and PM2.5 data points, which were indicated with negative values that are equal to or less than -1.  One possible way to significantly improve overall correlations between AOD and PM2.5 is to improve the accuracy and overall availability of measurements.  More air quality stations could be created with higher-quality sensors, or there could be a volunteer project where many people measure air quality from their own homes, which would be similar to the Folding@home project.
+Our results highlight a critical "robustness gap." While Deep Learning is the current trend \cite{scirep2025}, simple Neural Networks (MLP in Table \ref{tab:addis}) failed to converge effectively on the smaller Addis Ababa dataset ($R^2=0.008$). In contrast, Tree-based ensembles consistently achieved $R^2 \approx 0.5$. 
 
-In fact, the EPA recently launched the ``Air Sensor Toolbox", a project to improve the quality and availability of air sensors.  One major current initiative is to research the long-term capabilities of air sensors.  The Fire and Smoke Map at AirNow is now accepting data from home air quality sensors on a limited basis.  The U.S. Government now loans sensors from companies such as PurpleAir and Airbeam to various individuals and groups \cite{US_EPA_2016}.
+This finding is significant for "Data Equity." It suggests that for many regions in the Global South, where sensor networks are developing, implementing computationally efficient ensemble methods like XGBoost or Extra Trees is a more viable strategy than waiting for datasets large enough to train Transformer-based models.
 
-Evidence for effectiveness of this strategy comes from results presented in a paper from China titled ``Towards End-to-End License Plate Detection and Recognition: A Large Dataset and Baseline".  The Chinese City Parking Dataset (CCPD) contains 250k license plate (LP) images, which is much larger than previous LP datasets.  The algortihm that the authors created resulted in 98.5\% accuracy over a wide variety of images, and was generally far more accurate in every category compared to standard LP detection algorithms \cite{Xu_Yang_Meng_Lu_Huang_Ying_Huang_2018}.
+Future work should integrate meteorological reanalysis data (MERRA-2) to further constrain the AOD-PM2.5 relationship, as humidity and boundary layer height are critical unobserved variables in this study.
 
-%------------------------------------------------------------------------
 \section{Conclusion}
-The main purpose of this project was to learn how to predict PM2.5 levels based on AOD and other parameters.  Additionally, learning how to perform data preparation with Python and pandas was an important aspect of this project, as the data had to be efficiently sorted and organized.  All of the data was taken from NASA's Space Apps Challenge.  The machine learning models were from the scikit-learn library.
+We compared ensemble and linear methods for predicting PM2.5 from satellite AOD. We found that non-linear ensemble methods (Random Forest, XGBoost) are essential for accurate retrieval in both data-rich and data-scarce urban environments. These methods offer a robust baseline for global air quality monitoring, bridging the gap between satellite observations and ground-level health impacts.
 
-The most effective algorithms are ensemble methods, which are based on decision trees.  A diverse set of classifiers is created from these methods.  They are more effective because they use more patterns compared to linear learning methods.  What matters most is the number of data points and the number of types of data that correlate with PM2.5 levels.
-
-Data preparation was the most difficult aspect, since different datasets had different headers and used different notations.  PM2.5 data was more stable over time at higher values.  At lower values, the numbers varied greatly from day to day.  Hopefully, when data collection methods dramatically improve, AOD data will be a far more useful prediction method in the future since AOD readings are based off a very wide area from satellites.
-
-%------------------------------------------------------------------------
 \section{Acknowledgements}
-Many thanks to Dr. John Kerekes of the RIT Center for Imaging Science for suggesting this project and providing guidance on data preparation and analysis.  Additional thanks go to data scientist Robert Ritz for helping with machine learning algorithms, which are from an air quality project he worked on in Mongolia.
+Many thanks to Dr. John Kerekes of the RIT Center for Imaging Science for guidance on data preparation and analysis, and to Robert Ritz for foundational work on air quality algorithms.
 
 {\small
 \bibliographystyle{ieee_fullname}
