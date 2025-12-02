@@ -1,6 +1,10 @@
 # Comparing Ensemble and Linear Methods for Predicting PM2.5 Levels from AOD Data
 A major challenge involving pollution detection is to measure the average PM2.5 concentration over major metropolitan areas. One useful method for predicting PM2.5 over a relatively wide range are AOD measurements.  Ensemble algorithms are more effective than linear algorithms for prediction.  Pandas and scikit-learn were used for data analysis.
 
+## Data Repository
+
+The PM2.5 data for this project was sourced from the **[OpenAQ Project](https://openaq.org/)** (covering 2016-2019).  For reference, the specific stations used were Addis Ababa: US Diplomatic Post (Central & School), and Los Angeles: Anaheim, Santa Clarita, Glendora, North-Main, Reseda, South Long Beach.
+
 ## Installation
 
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install scikit-learn before running.
