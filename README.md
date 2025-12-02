@@ -3,7 +3,7 @@ A major challenge involving pollution detection is to measure the average PM2.5 
 
 ## Data Repository
 
-The PM2.5 data for this project was sourced from the **[OpenAQ Project](https://openaq.org/)** (covering 2016-2019).  For reference, the specific stations used were Addis Ababa: US Diplomatic Post (Central & School), and Los Angeles: Anaheim, Santa Clarita, Glendora, North-Main, Reseda, South Long Beach.
+The PM2.5 data for this project was sourced from the **[OpenAQ Project](https://openaq.org/)** (covering 2016-2019).  The raw data was originally stored in a `Reference.zip` file which was too large for the repository.  More specifically, the stations used were Addis Ababa: US Diplomatic Post (Central & School), and Los Angeles: Anaheim, Santa Clarita, Glendora, North-Main, Reseda, South Long Beach.
 
 ## Installation
 
